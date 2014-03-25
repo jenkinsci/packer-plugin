@@ -1,0 +1,65 @@
+<!-- Copyright 2000-2014 NeuStar, Inc. All rights reserved. -->
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+
+    <f:entry title="${%Packer Installation}">
+        <select class="setting-input" name="packer.name">
+          <j:forEach var="inst" items="${descriptor.installations}">
+            <f:option selected="${inst.name==instance.getInstallation().name}">${inst.name}</f:option>
+          </j:forEach>
+        </select>
+    </f:entry>
+
+  <!-- do we want to allow overriding at the job level? not yet.
+  	<f:entry title="${%Packer Home}" description="This field defaults to Packer Home value from global installation config">
+  	  <f:textbox field="packerHome" />
+   </f:entry>
+  -->
+
+    <f:block>
+        <div style="margin-left:5px;margin-top:5px;margin-bottom:10px;">
+            <table style="width: 100%;">
+                <f:radioBlock title="${%Packer Global Template}" name="templateMode" value="global"
+                              checked="${descriptor.isGlobalTemplateChecked(instance)}"
+                              help="${descriptor.getHelpFile('globalTemplate')}">
+
+                    <f:entry title="${%Global Template}">
+                        <f:readOnlyTextbox value="${descriptor.getGlobalTemplate(instance)}"/>
+                    </f:entry>
+
+                </f:radioBlock>
+
+                <f:radioBlock title="${%Packer Template File}" name="templateMode" value="file"
+                              checked="${instance.isFileTemplate()}"
+                              help="${descriptor.getHelpFile('jsonTemplate')}">
+                  <f:entry title="${%JSON Template File}">
+                    <f:textbox field="jsonTemplate" />
+                  </f:entry>
+                </f:radioBlock>
+
+                <f:radioBlock  title="${%Packer Template Text}" name="templateMode" value="text"
+                               checked="${instance.isTextTemplate()}"
+                               help="${descriptor.getHelpFile('jsonTemplateText')}">
+                    <f:entry title="${%JSON Template Text}">
+                        <f:textarea field="jsonTemplateText" />
+                    </f:entry>
+                </f:radioBlock>
+            </table>
+        </div>
+    </f:block>
+
+    <f:entry title="${%Additional Parameters}"
+             description="Defaults to Additional Parameters value from global installation config" field="params">
+
+  	    <f:textarea name="params" value="${inst.getParams()}"/>
+  	</f:entry>
+  	<f:entry title="${%Use Debug Option}" field="useDebug">
+  		<f:checkbox />
+    </f:entry>
+
+    <f:entry title="${%File Entries}" field="fileEntries">
+      <f:repeatableProperty field="fileEntries"  minimum="0" />
+    </f:entry>
+
+</j:jelly>
+
+

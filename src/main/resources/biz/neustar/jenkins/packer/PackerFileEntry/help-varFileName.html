@@ -1,0 +1,23 @@
+<div>
+    <p>Variable Name for a file to used in the Packer configuration JSON.</p>
+
+    <p>For certain builds, like <a href="http://www.packer.io/docs/builders/amazon-instance.html">amazon-instance</a>
+        the x509_cert_path & x509_key_path are required.  The given variable name can then be referenced in the
+        configuration file as the value for a path.
+    </p>
+    <p>
+    Example JSON configuration:<br/>
+    <pre>
+    {
+        "type": "amazon-instance",
+        "x509_cert_path": "{{user `x509_cert`}}",
+        ....etc...
+    }
+    </pre>
+    </p>
+    <p>
+    Then the Variable Name would be: <b>x509_cert</b> with the contents as the cert.
+    Others such as x509_key_path can be specified in the same manor.
+    </p>
+    <p>For more details consult <a target="_blank" href="http://www.packer.io/docs">Packer documentation.</a></p>
+</div>

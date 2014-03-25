@@ -1,0 +1,15 @@
+<!-- Copyright 2000-2014 NeuStar, Inc. All rights reserved. -->
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+  <f:entry title="${%Variable Name}" field="varFileName">
+    <f:textbox/>
+  </f:entry>
+  <f:entry title="${%File Contents}" field="contents">
+    <f:textarea/>
+  </f:entry>
+
+  <f:entry>
+    <div align="right">
+      <f:repeatableDeleteButton />
+    </div>
+  </f:entry>
+</j:jelly>

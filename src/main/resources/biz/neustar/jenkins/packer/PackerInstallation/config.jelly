@@ -1,0 +1,40 @@
+<!-- Copyright 2000-2014 NeuStar, Inc. All rights reserved. -->
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+    <f:entry title="${%Name}" field="name">
+        <f:textbox />
+    </f:entry>
+    <f:entry title="Packer Home" field="home">
+        <f:textbox />
+    </f:entry>
+
+    <f:block>
+        <div style="margin-left:5px;margin-top:5px;margin-bottom:10px;">
+            <table style="width: 100%;">
+                <f:radioBlock name="templateMode" title="${%Packer Template File}" value="file"
+                              checked="${instance.isFileTemplate()}"
+                              help="${descriptor.getHelpFile('jsonTemplate')}">
+
+                    <f:entry title="${%JSON Template File}" field="jsonTemplate">
+                        <f:textbox name="jsonTemplate" value="${inst.getJsonTemplate()}"/>
+                    </f:entry>
+                </f:radioBlock>
+
+               <f:radioBlock name="templateMode" title="${%Packer Template Text}" value="text"
+                             checked="${descriptor.isTextTemplateChecked(instance)}"
+                             help="${descriptor.getHelpFile('jsonTemplateText')}">
+                <f:entry title="${%JSON Template Text}" field="jsonTemplateText">
+                  <f:textarea  value="${inst.getJsonTemplateText()}"/>
+                </f:entry>
+               </f:radioBlock>
+            </table>
+        </div>
+    </f:block>
+
+   <f:entry title="${%Additional Parameters}" field="params">
+       <f:textbox name="params" value="${inst.getParams()}"/>
+   </f:entry>
+
+   <f:entry title="${%File Entries}" field="fileEntries">
+      <f:repeatableProperty field="fileEntries"  minimum="0" />
+   </f:entry>
+</j:jelly>
