@@ -19,7 +19,6 @@ import java.util.logging.Logger;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 
-// TODO: not supported yet.
 public class PackerInstaller extends DownloadFromUrlInstaller {
     private static final Logger LOGGER = Logger.getLogger(PackerInstaller.class.getName());
 

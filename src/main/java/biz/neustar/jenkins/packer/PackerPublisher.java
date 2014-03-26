@@ -45,8 +45,8 @@ import org.kohsuke.stapler.StaplerRequest;
  * See: <a href="http://packer.io">Packer</a>
  *
  */
-public class DeployWithPacker extends Recorder {
-    private static final Logger LOGGER = Logger.getLogger(DeployWithPacker.class.getName());
+public class PackerPublisher extends Recorder {
+    private static final Logger LOGGER = Logger.getLogger(PackerPublisher.class.getName());
 
     public static final String TEMPLATE_MODE = "templateMode";
 
@@ -60,13 +60,13 @@ public class DeployWithPacker extends Recorder {
     private List<PackerFileEntry> fileEntries = Collections.emptyList();
 
     @DataBoundConstructor
-    public DeployWithPacker(String name,
-                            String jsonTemplate,
-                            String jsonTemplateText,
-                            String packerHome,
-                            String params,
-                            List<PackerFileEntry> fileEntries,
-                            boolean useDebug) {
+    public PackerPublisher(String name,
+                           String jsonTemplate,
+                           String jsonTemplateText,
+                           String packerHome,
+                           String params,
+                           List<PackerFileEntry> fileEntries,
+                           boolean useDebug) {
 
         this.name = name;
         this.jsonTemplate = jsonTemplate;
@@ -415,10 +415,10 @@ public class DeployWithPacker extends Recorder {
     public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
 
         @Override
-        public DeployWithPacker newInstance(StaplerRequest req, JSONObject formData)
+        public PackerPublisher newInstance(StaplerRequest req, JSONObject formData)
                 throws hudson.model.Descriptor.FormException {
 
-            DeployWithPacker packer = (DeployWithPacker) req.bindJSON(clazz,
+            PackerPublisher packer = (PackerPublisher) req.bindJSON(clazz,
                     formData);
 
             if (formData.has(TEMPLATE_MODE)) {
@@ -442,7 +442,7 @@ public class DeployWithPacker extends Recorder {
             save();
         }
 
-        public boolean isGlobalTemplateChecked(DeployWithPacker instance) {
+        public boolean isGlobalTemplateChecked(PackerPublisher instance) {
             boolean result = true;
             if (instance != null) {
                 instance.getGlobalTemplate();
@@ -451,7 +451,7 @@ public class DeployWithPacker extends Recorder {
             return result;
         }
 
-        public String getGlobalTemplate(DeployWithPacker instance) {
+        public String getGlobalTemplate(PackerPublisher instance) {
             String result = "Save and reload to see global template...";
             if (instance != null) {
                 result = instance.getGlobalTemplate();

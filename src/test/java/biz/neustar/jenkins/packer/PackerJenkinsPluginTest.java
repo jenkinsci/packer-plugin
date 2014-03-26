@@ -36,6 +36,7 @@ import org.mockito.stubbing.Answer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
@@ -79,57 +80,94 @@ public class PackerJenkinsPluginTest {
     @WithoutJenkins
     public void testFilePathUnix() throws Exception {
         FilePath path = new FilePath(new LocalChannel(MoreExecutors.sameThreadExecutor()), "D:/Program Files\\packer");
-        assertFalse(DeployWithPacker.isFilePathUnix(path));
+        assertFalse(PackerPublisher.isFilePathUnix(path));
+    }
+
+    @Test
+    public void testPackerInstaller() throws Exception {
+        final String jsonText = "{ \"here\": \"i am\"}";
+
+        PackerInstallation installation = new PackerInstallation(name, home,
+                params, createTemplateModeJson(TemplateMode.TEXT, jsonText), emptyFileEntries, null);
+
+        PackerInstaller installer = new PackerInstaller("1");
+        installer.performInstallation(installation, jenkins.createOnlineSlave(), jenkins.createTaskListener());
+        PackerInstaller.DescriptorImpl desc = new PackerInstaller.DescriptorImpl();
+        assertTrue(desc.isApplicable(installation.getClass()));
+
+        assertEquals(home + "/packer", installation.getExeFile().toString());
+        assertNull(installation.getExecutable(jenkins.createLocalLauncher()));
+
+
+        PackerInstallation.DescriptorImpl instDesc = new PackerInstallation.DescriptorImpl();
+        assertEquals(1, instDesc.getDefaultInstallers().size());
+        assertTrue(instDesc.isTextTemplateChecked(null));
+        assertEquals(0, instDesc.getInstallations().length);
+
+        PackerInstallation mockInst = mock(PackerInstallation.class);
+        when(mockInst.isTextTemplate()).thenReturn(false);
+        when(mockInst.isFileTemplate()).thenReturn(true);
+        assertFalse(instDesc.isTextTemplateChecked(mockInst));
+    }
+
+    @Test
+    @WithoutJenkins
+    public void testPackerFileEntry() throws Exception {
+        PackerFileEntry entry = new PackerFileEntry("1", "2");
+        entry.setContents("3");
+        entry.setVarFileName("4");
+        assertEquals("4", entry.getVarFileName());
+        assertEquals("3", entry.getContents());
     }
 
     @Test
     @WithoutJenkins
     public void testExceptionLogging() throws Exception {
-        String s = DeployWithPacker.convertException(new AbortException("Template Generation / Loading Failed"));
+        String s = PackerPublisher.convertException(new AbortException("Template Generation / Loading Failed"));
         assertTrue(s.length() > 0);
     }
 
     @Test
     @WithoutJenkins
     public void testAddEmptyParamsAsArgs() throws Exception {
-        assertTrue(DeployWithPacker.addParamsAsArgs("").isEmpty());
-        assertTrue(DeployWithPacker.addParamsAsArgs(null).isEmpty());
+        assertTrue(PackerPublisher.addParamsAsArgs("").isEmpty());
+        assertTrue(PackerPublisher.addParamsAsArgs(null).isEmpty());
     }
 
 
     @Test
     @WithoutJenkins
     public void testParamParsing() throws Exception {
-        List<String> argList = DeployWithPacker.addParamsAsArgs("-var blah=test");
+        List<String> argList = PackerPublisher.addParamsAsArgs("-var blah=test");
         assertEquals(2, argList.toArray().length);
         assertEquals("-var", argList.toArray()[0]);
         assertEquals("blah=test", argList.toArray()[1]);
 
-        argList = DeployWithPacker.addParamsAsArgs("-var \'blah=test\'");
+        argList = PackerPublisher.addParamsAsArgs("-var \'blah=test\'");
         assertEquals(2, argList.toArray().length);
         assertEquals("-var", argList.toArray()[0]);
         assertEquals("blah=test", argList.toArray()[1]);
 
-        argList = DeployWithPacker.addParamsAsArgs("-var \'blah=test space\'");
+        argList = PackerPublisher.addParamsAsArgs("-var \'blah=test space\'");
         assertEquals(2, argList.toArray().length);
         assertEquals("-var", argList.toArray()[0]);
         assertEquals("blah=test space", argList.toArray()[1]);
 
-        argList = DeployWithPacker.addParamsAsArgs("-var \"blah=test space\" ");
+        argList = PackerPublisher.addParamsAsArgs("-var \"blah=test space\" ");
         assertEquals(2, argList.toArray().length);
         assertEquals("-var", argList.toArray()[0]);
         assertEquals("blah=test space", argList.toArray()[1]);
 
-        argList = DeployWithPacker.addParamsAsArgs("-var \"blah=%{BUILD_NAME}\" ");
+        argList = PackerPublisher.addParamsAsArgs("-var \"blah=%{BUILD_NAME}\" ");
         assertEquals(2, argList.toArray().length);
         assertEquals("-var", argList.toArray()[0]);
         assertEquals("blah=%{BUILD_NAME}", argList.toArray()[1]);
     }
 
 	// Test DataBound constructor of PackerInstallation
-  @Test
-  @WithoutJenkins
-	public void testGlobalInstallation() {
+    @Test
+    @WithoutJenkins
+    public void testGlobalInstallation() {
         final String templateFile = "packer.json";
 		PackerInstallation installation = new PackerInstallation(name, home,
 				params, createTemplateModeJson(TemplateMode.FILE, templateFile), emptyFileEntries, null);
@@ -140,15 +178,35 @@ public class PackerJenkinsPluginTest {
 		assertEquals(templateFile, installation.getJsonTemplate());
 	}
 
-
-  @Test
-  @WithoutJenkins
-	public void testJobPluginTextInJob() {
+    @Test
+    public void testPackerGlobalChecked() {
         final String jsonText = "{ \"here\": \"i am\"}";
 
-		DeployWithPacker plugin = new DeployWithPacker(name,
-				jsonProjectTemplate, jsonText, PLUGIN_HOME,
-				localParams, emptyFileEntries, false);
+        PackerPublisher plugin = new PackerPublisher(name,
+                jsonProjectTemplate, jsonText, PLUGIN_HOME,
+                localParams, emptyFileEntries, false);
+        plugin.setTemplateMode("");
+        assertTrue(plugin.isGlobalTemplateChecked());
+
+        // descriptor check marks
+        PackerPublisher.DescriptorImpl desc = plugin.getDescriptor();
+        assertTrue(desc.isGlobalTemplateChecked(null));
+
+        PackerPublisher mockPacker = mock(PackerPublisher.class);
+        when(mockPacker.isGlobalTemplateChecked()).thenReturn(false);
+        when(mockPacker.getGlobalTemplate()).thenReturn("testing");
+        assertFalse(desc.isGlobalTemplateChecked(mockPacker));
+        assertEquals("testing", desc.getGlobalTemplate(mockPacker));
+    }
+
+    @Test
+    @WithoutJenkins
+    public void testJobPluginTextInJob() {
+        final String jsonText = "{ \"here\": \"i am\"}";
+
+        PackerPublisher plugin = new PackerPublisher(name,
+                jsonProjectTemplate, jsonText, PLUGIN_HOME,
+                localParams, emptyFileEntries, false);
 
         assertEquals(PLUGIN_HOME, plugin.getPackerHome());
         // text in job initialization
@@ -167,7 +225,7 @@ public class PackerJenkinsPluginTest {
     public void testJobPluginFileInJob() {
         final String jsonFile = "somefile.json";
 
-        DeployWithPacker plugin = new DeployWithPacker(name,
+        PackerPublisher plugin = new PackerPublisher(name,
                 jsonFile, "{ \"here\": \"i am\"}", PLUGIN_HOME,
                 localParams, emptyFileEntries, false);
 
@@ -189,12 +247,13 @@ public class PackerJenkinsPluginTest {
         PackerInstallation installation = new PackerInstallation(name, home,
                 params, createTemplateModeJson(TemplateMode.TEXT, jsonText), emptyFileEntries, null);
 
-        DeployWithPacker plugin = new DeployWithPacker(name,
+        PackerPublisher plugin = new PackerPublisher(name,
                 "somefile.json", "{ \"here\": \"i am\"}", PLUGIN_HOME,
                 localParams, emptyFileEntries, false);
 
         PackerInstallation[] installations = new PackerInstallation[1];
         installations[0] = installation;
+        assertNull(plugin.getInstallation()); // should be null before
         plugin.getDescriptor().setInstallations(installations);
 
         assertEquals(PLUGIN_HOME, plugin.getPackerHome());
@@ -217,7 +276,7 @@ public class PackerJenkinsPluginTest {
                 params, createTemplateModeJson(TemplateMode.TEXT, jsonText), emptyFileEntries, null);
 
         final String pluginHome = "bin";
-        DeployWithPacker placeHolder = new DeployWithPacker(name,
+        PackerPublisher placeHolder = new PackerPublisher(name,
                 null, null, pluginHome, localParams, emptyFileEntries, false);
 
         PackerInstallation[] installations = new PackerInstallation[1];
@@ -230,7 +289,7 @@ public class PackerJenkinsPluginTest {
 
         JSONObject formJson = new JSONObject();
         formJson.put("templateMode", createTemplateModeJson(TemplateMode.TEXT, jsonText));
-        DeployWithPacker plugin = placeHolder.getDescriptor().newInstance(mockReq, formJson);
+        PackerPublisher plugin = placeHolder.getDescriptor().newInstance(mockReq, formJson);
 
         assertEquals(pluginHome, plugin.getPackerHome());
         assertEquals(localParams, plugin.getParams());
@@ -260,7 +319,7 @@ public class PackerJenkinsPluginTest {
         PackerInstallation installation = new PackerInstallation(name, home,
                 params, createTemplateModeJson(TemplateMode.TEXT, jsonText), emptyFileEntries, null);
 
-        DeployWithPacker placeHolder = new DeployWithPacker(name,
+        PackerPublisher placeHolder = new PackerPublisher(name,
                 null, null, PLUGIN_HOME, localParams, emptyFileEntries, false);
 
         PackerInstallation[] installations = new PackerInstallation[1];
@@ -273,7 +332,7 @@ public class PackerJenkinsPluginTest {
 
         JSONObject formJson = new JSONObject();
         formJson.put("templateMode", createTemplateModeJson(TemplateMode.TEXT, jsonText));
-        DeployWithPacker plugin = placeHolder.getDescriptor().newInstance(mockReq, formJson);
+        PackerPublisher plugin = placeHolder.getDescriptor().newInstance(mockReq, formJson);
 
         assertEquals(PLUGIN_HOME, plugin.getPackerHome());
         assertEquals(localParams, plugin.getParams());
@@ -303,7 +362,7 @@ public class PackerJenkinsPluginTest {
                 params, createTemplateModeJson(TemplateMode.TEXT, jsonText), emptyFileEntries, null);
 
         final String pluginHome = "bin";
-        DeployWithPacker placeHolder = new DeployWithPacker(name,
+        PackerPublisher placeHolder = new PackerPublisher(name,
                 null, null, pluginHome, localParams, emptyFileEntries, false);
 
         PackerInstallation[] installations = new PackerInstallation[1];
@@ -316,7 +375,7 @@ public class PackerJenkinsPluginTest {
 
         JSONObject formJson = new JSONObject();
         formJson.put("templateMode", createTemplateModeJson(TemplateMode.TEXT, jsonText));
-        DeployWithPacker plugin = placeHolder.getDescriptor().newInstance(mockReq, formJson);
+        PackerPublisher plugin = placeHolder.getDescriptor().newInstance(mockReq, formJson);
 
         assertEquals(pluginHome, plugin.getPackerHome());
         assertEquals(localParams, plugin.getParams());
@@ -353,7 +412,7 @@ public class PackerJenkinsPluginTest {
                 params, createTemplateModeJson(TemplateMode.TEXT, jsonText), emptyFileEntries, null);
 
         final String pluginHome = "D:\\bin";
-        DeployWithPacker placeHolder = new DeployWithPacker(name,
+        PackerPublisher placeHolder = new PackerPublisher(name,
                 null, null, pluginHome, localParams, emptyFileEntries, false);
 
         PackerInstallation[] installations = new PackerInstallation[1];
@@ -366,7 +425,7 @@ public class PackerJenkinsPluginTest {
 
         JSONObject formJson = new JSONObject();
         formJson.put("templateMode", createTemplateModeJson(TemplateMode.TEXT, jsonText));
-        DeployWithPacker plugin = placeHolder.getDescriptor().newInstance(mockReq, formJson);
+        PackerPublisher plugin = placeHolder.getDescriptor().newInstance(mockReq, formJson);
 
         assertEquals(pluginHome, plugin.getPackerHome());
         assertEquals(localParams, plugin.getParams());
@@ -411,7 +470,7 @@ public class PackerJenkinsPluginTest {
         List<PackerFileEntry> wkspFileEntries = new ArrayList<>();
         globalFileEntries.add(new PackerFileEntry("x509_cert", "in build"));
         globalFileEntries.add(new PackerFileEntry("blah", "whatever"));
-        DeployWithPacker placeHolder = new DeployWithPacker(name,
+        PackerPublisher placeHolder = new PackerPublisher(name,
                 null, null, pluginHome, "-var 'ami=123'", wkspFileEntries, false);
 
         PackerInstallation[] installations = new PackerInstallation[1];
@@ -425,7 +484,7 @@ public class PackerJenkinsPluginTest {
         JSONObject formJson = new JSONObject();
         formJson.put("templateMode", createTemplateModeJson(TemplateMode.TEXT, jsonText));
         formJson.put("useDebug", true);
-        DeployWithPacker plugin = placeHolder.getDescriptor().newInstance(mockReq, formJson);
+        PackerPublisher plugin = placeHolder.getDescriptor().newInstance(mockReq, formJson);
 
         FreeStyleProject project = jenkins.createFreeStyleProject();
         final FreeStyleBuild build = project.scheduleBuild2(0).get();

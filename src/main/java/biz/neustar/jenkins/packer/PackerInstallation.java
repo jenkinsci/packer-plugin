@@ -146,7 +146,7 @@ public class PackerInstallation extends ToolInstallation implements
         });
     }
 
-    private File getExeFile() {
+    protected File getExeFile() {
         String execName = (Functions.isWindows()) ? WINDOWS_PACKER_COMMAND : UNIX_PACKER_COMMAND;
         String home = Util.replaceMacro(this.packerHome, EnvVars.masterEnvVars);
         return new File(home, execName);
@@ -174,14 +174,14 @@ public class PackerInstallation extends ToolInstallation implements
         @Override
         public PackerInstallation[] getInstallations() {
             return Jenkins.getInstance()
-                    .getDescriptorByType(DeployWithPacker.DescriptorImpl.class)
+                    .getDescriptorByType(PackerPublisher.DescriptorImpl.class)
                     .getInstallations();
         }
 
         @Override
         public void setInstallations(PackerInstallation... installations) {
             Jenkins.getInstance()
-                    .getDescriptorByType(DeployWithPacker.DescriptorImpl.class)
+                    .getDescriptorByType(PackerPublisher.DescriptorImpl.class)
                     .setInstallations(installations);
         }
 
