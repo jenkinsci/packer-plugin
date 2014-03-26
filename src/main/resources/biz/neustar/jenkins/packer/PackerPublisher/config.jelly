@@ -23,7 +23,11 @@
                               help="${descriptor.getHelpFile('globalTemplate')}">
 
                     <f:entry title="${%Global Template}">
-                        <f:readOnlyTextbox value="${descriptor.getGlobalTemplate(instance)}"/>
+                        <textarea class="setting-input"
+                                  rows="${h.determineRows(descriptor.getGlobalTemplate(instance))}"
+                                  readonly="readonly">
+                            <st:out value="${descriptor.getGlobalTemplate(instance)}" />
+                        </textarea>
                     </f:entry>
 
                 </f:radioBlock>
