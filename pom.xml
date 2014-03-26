@@ -11,7 +11,7 @@
   <version>1.0-SNAPSHOT</version>
   <packaging>hpi</packaging>
   <description>Integrates Packer as a publisher in Jenkins</description>
-  <url>http://wiki.jenkins-ci.org/display/JENKINS/</url>
+  <url>http://wiki.jenkins-ci.org/display/JENKINS/Packer+Plugin</url>
 
 
   <licenses>
