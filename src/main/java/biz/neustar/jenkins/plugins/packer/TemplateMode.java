@@ -6,7 +6,7 @@
  * of their respective owners.
  */
 
-package biz.neustar.jenkins.packer;
+package biz.neustar.jenkins.plugins.packer;
 
 public enum TemplateMode {
     TEXT("text"),
