@@ -24,10 +24,12 @@
 
                     <f:entry title="${%Global Template}">
                         <textarea class="setting-input"
-                                  rows="${h.determineRows(descriptor.getGlobalTemplate(instance))}"
+                                  rows="${10}"
                                   readonly="readonly">
                             <st:out value="${descriptor.getGlobalTemplate(instance)}" />
                         </textarea>
+                        <!-- resize handle -->
+                        <div class="textarea-handle"/>
                     </f:entry>
 
                 </f:radioBlock>
