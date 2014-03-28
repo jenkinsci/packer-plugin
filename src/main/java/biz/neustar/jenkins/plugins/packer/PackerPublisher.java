@@ -445,7 +445,6 @@ public class PackerPublisher extends Recorder {
         public boolean isGlobalTemplateChecked(PackerPublisher instance) {
             boolean result = true;
             if (instance != null) {
-                instance.getGlobalTemplate();
                 result = instance.isGlobalTemplateChecked();
             }
             return result;
