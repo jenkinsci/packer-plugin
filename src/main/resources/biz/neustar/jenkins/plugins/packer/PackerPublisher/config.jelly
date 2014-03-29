@@ -1,13 +1,33 @@
 <!-- Copyright 2000-2014 NeuStar, Inc. All rights reserved. -->
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
 
-    <f:entry title="${%Packer Installation}">
-        <select class="setting-input" name="packer.name">
-          <j:forEach var="inst" items="${descriptor.installations}">
-            <f:option selected="${inst.name==instance.getInstallation().name}">${inst.name}</f:option>
-          </j:forEach>
-        </select>
-    </f:entry>
+
+       <f:dropdownList title="${%Packer Installation}" name="">
+            <j:forEach var="inst" items="${descriptor.installations}" varStatus="loop">
+                <f:dropdownListBlock value="${inst.name}" title="${inst.name}"
+                                     selected="${inst.name == instance.getInstallation().name}">
+
+                    <f:invisibleEntry>
+                        <input type="hidden" name="name" value="${inst.name}" />
+                    </f:invisibleEntry>
+                    <f:advanced title="${%View Global Template}" align="left">
+                        <f:entry>
+                            <div style="margin:0px 25px 0px -15px">
+                             <textarea class="setting-input"
+                                       rows="${10}" style="background-color:#f0f0f0;"
+                                       readonly="readonly">
+                                 <st:out value="${inst.getJsonTemplateText() ?: 'file: ' + inst.getJsonTemplate()}" />
+                             </textarea>
+                             <!-- resize handle -->
+                             <div class="textarea-handle"/>
+                             </div>
+                        </f:entry>
+                    </f:advanced>
+
+                </f:dropdownListBlock>
+            </j:forEach>
+        </f:dropdownList>
+
 
   <!-- do we want to allow overriding at the job level? not yet.
   	<f:entry title="${%Packer Home}" description="This field defaults to Packer Home value from global installation config">
@@ -22,16 +42,8 @@
                               checked="${descriptor.isGlobalTemplateChecked(instance)}"
                               help="${descriptor.getHelpFile('globalTemplate')}">
 
-                    <f:entry title="${%Global Template}">
-                        <textarea class="setting-input"
-                                  rows="${10}"
-                                  readonly="readonly">
-                            <st:out value="${descriptor.getGlobalTemplate(instance)}" />
-                        </textarea>
-                        <!-- resize handle -->
-                        <div class="textarea-handle"/>
+                    <f:entry>
                     </f:entry>
-
                 </f:radioBlock>
 
                 <f:radioBlock title="${%Packer Template File}" name="templateMode" value="file"
