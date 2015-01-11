@@ -16,6 +16,9 @@ Jobs can specify their own template for packer or just use a system configured o
 See the plugin wiki for more details: [Packer Plugin Wiki](https://wiki.jenkins-ci.org/display/JENKINS/Packer+Plugin)
 
 
+Jenkins generates the list of installers from the [Crawler Entry](https://github.com/jenkinsci/backend-crawler/blob/master/packer.groovy)
+
+
 ---
 
 Thanks goes to [NeuStar](http://neustar.biz) for sponsoring this work.
