@@ -8,7 +8,7 @@
 
   <groupId>biz.neustar.jenkins.plugins</groupId>
   <artifactId>packer</artifactId>
-  <version>1.1-SNAPSHOT</version>
+  <version>1.2-SNAPSHOT</version>
   <packaging>hpi</packaging>
   <description>Integrates Packer as a publisher in Jenkins</description>
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Packer+Plugin</url>
@@ -130,6 +130,18 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>2.5.1</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.maven.scm</groupId>
+            <artifactId>maven-scm-provider-gitexe</artifactId>
+            <version>1.9.2</version>
+          </dependency>
+        </dependencies>
       </plugin>
     </plugins>
   </build>
