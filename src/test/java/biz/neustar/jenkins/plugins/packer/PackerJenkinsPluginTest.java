@@ -184,7 +184,7 @@ public class PackerJenkinsPluginTest {
 
         PackerPublisher plugin = new PackerPublisher(name,
                 jsonProjectTemplate, jsonText, PLUGIN_HOME,
-                localParams, emptyFileEntries, false);
+                localParams, emptyFileEntries, false, null);
         plugin.setTemplateMode("");
         assertTrue(plugin.isGlobalTemplateChecked());
 
@@ -206,7 +206,7 @@ public class PackerJenkinsPluginTest {
 
         PackerPublisher plugin = new PackerPublisher(name,
                 jsonProjectTemplate, jsonText, PLUGIN_HOME,
-                localParams, emptyFileEntries, false);
+                localParams, emptyFileEntries, false, null);
 
         assertEquals(PLUGIN_HOME, plugin.getPackerHome());
         // text in job initialization
@@ -227,7 +227,7 @@ public class PackerJenkinsPluginTest {
 
         PackerPublisher plugin = new PackerPublisher(name,
                 jsonFile, "{ \"here\": \"i am\"}", PLUGIN_HOME,
-                localParams, emptyFileEntries, false);
+                localParams, emptyFileEntries, false, null);
 
         assertEquals(PLUGIN_HOME, plugin.getPackerHome());
         // text in job initialization
@@ -249,7 +249,7 @@ public class PackerJenkinsPluginTest {
 
         PackerPublisher plugin = new PackerPublisher(name,
                 "somefile.json", "{ \"here\": \"i am\"}", PLUGIN_HOME,
-                localParams, emptyFileEntries, false);
+                localParams, emptyFileEntries, false, null);
 
         PackerInstallation[] installations = new PackerInstallation[1];
         installations[0] = installation;
@@ -277,7 +277,7 @@ public class PackerJenkinsPluginTest {
 
         final String pluginHome = "bin";
         PackerPublisher placeHolder = new PackerPublisher(name,
-                null, null, pluginHome, localParams, emptyFileEntries, false);
+                null, null, pluginHome, localParams, emptyFileEntries, false, null);
 
         PackerInstallation[] installations = new PackerInstallation[1];
         installations[0] = installation;
@@ -320,7 +320,7 @@ public class PackerJenkinsPluginTest {
                 params, createTemplateModeJson(TemplateMode.TEXT, jsonText), emptyFileEntries, null);
 
         PackerPublisher placeHolder = new PackerPublisher(name,
-                null, null, PLUGIN_HOME, localParams, emptyFileEntries, false);
+                null, null, PLUGIN_HOME, localParams, emptyFileEntries, false, null);
 
         PackerInstallation[] installations = new PackerInstallation[1];
         installations[0] = installation;
@@ -363,7 +363,7 @@ public class PackerJenkinsPluginTest {
 
         final String pluginHome = "bin";
         PackerPublisher placeHolder = new PackerPublisher(name,
-                null, null, pluginHome, localParams, emptyFileEntries, false);
+                null, null, pluginHome, localParams, emptyFileEntries, false, null);
 
         PackerInstallation[] installations = new PackerInstallation[1];
         installations[0] = installation;
@@ -413,7 +413,7 @@ public class PackerJenkinsPluginTest {
 
         final String pluginHome = "D:\\bin";
         PackerPublisher placeHolder = new PackerPublisher(name,
-                null, null, pluginHome, localParams, emptyFileEntries, false);
+                null, null, pluginHome, localParams, emptyFileEntries, false, null);
 
         PackerInstallation[] installations = new PackerInstallation[1];
         installations[0] = installation;
@@ -471,7 +471,7 @@ public class PackerJenkinsPluginTest {
         globalFileEntries.add(new PackerFileEntry("x509_cert", "in build"));
         globalFileEntries.add(new PackerFileEntry("blah", "whatever"));
         PackerPublisher placeHolder = new PackerPublisher(name,
-                null, null, pluginHome, "-var 'ami=123'", wkspFileEntries, false);
+                null, null, pluginHome, "-var 'ami=123'", wkspFileEntries, false, "${WORKSPACE}/blah/here");
 
         PackerInstallation[] installations = new PackerInstallation[1];
         installations[0] = installation;
@@ -519,6 +519,9 @@ public class PackerJenkinsPluginTest {
                 assertEquals("in build", Files.toString(new File(f), Charsets.UTF_8));
 
                 assertTrue(cmds.get(12).endsWith(".json"));
+
+                assertEquals(build.getWorkspace().getRemote() + "/blah/here", param.pwd().getRemote());
+
                 return procMock;
             }
         });
@@ -526,4 +529,50 @@ public class PackerJenkinsPluginTest {
         assertTrue(plugin.perform((AbstractBuild) build, launcherMock, buildListenerMock));
     }
 
+    @Test
+    public void testPluginBuildNoChangeDir() throws Exception {
+        final String jsonText = "{ \"here\": \"i am\"}";
+
+        List<PackerFileEntry> globalFileEntries = new ArrayList<>();
+        PackerInstallation installation = new PackerInstallation(name, home,
+                "", createTemplateModeJson(TemplateMode.TEXT, jsonText), globalFileEntries, null);
+
+        final String pluginHome = "bin";
+
+        List<PackerFileEntry> wkspFileEntries = new ArrayList<>();
+        PackerPublisher placeHolder = new PackerPublisher(name,
+                null, null, pluginHome, "", wkspFileEntries, false, "");
+
+        PackerInstallation[] installations = new PackerInstallation[1];
+        installations[0] = installation;
+
+        placeHolder.getDescriptor().setInstallations(installations);
+
+        StaplerRequest mockReq = mock(StaplerRequest.class);
+        when(mockReq.bindJSON(any(Class.class), any(JSONObject.class))).thenReturn(placeHolder);
+
+        JSONObject formJson = new JSONObject();
+        formJson.put("templateMode", createTemplateModeJson(TemplateMode.TEXT, jsonText));
+//        formJson.put("useDebug", true);
+        PackerPublisher plugin = placeHolder.getDescriptor().newInstance(mockReq, formJson);
+
+        FreeStyleProject project = jenkins.createFreeStyleProject();
+        final FreeStyleBuild build = project.scheduleBuild2(0).get();
+
+        Launcher launcherMock = mock(Launcher.class);
+        BuildListener buildListenerMock = mock(BuildListener.class);
+
+        final Proc procMock = mock(Proc.class);
+        when(procMock.join()).thenReturn(0);
+        when(launcherMock.launch(any(Launcher.ProcStarter.class))).then(new Answer<Proc>() {
+            public Proc answer(InvocationOnMock invocation) throws Throwable {
+                Launcher.ProcStarter param = (Launcher.ProcStarter) invocation.getArguments()[0];
+                // should match workspace.
+                assertEquals(build.getWorkspace().getRemote(), param.pwd().getRemote());
+                return procMock;
+            }
+        });
+
+        assertTrue(plugin.perform((AbstractBuild) build, launcherMock, buildListenerMock));
+    }
 }

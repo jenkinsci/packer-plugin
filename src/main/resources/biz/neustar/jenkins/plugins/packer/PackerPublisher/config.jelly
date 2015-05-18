@@ -73,6 +73,10 @@
   	<f:entry title="${%Use Debug Option}" field="useDebug">
   		<f:checkbox />
     </f:entry>
+    <f:entry title="${%Change to Directory}" field="changeDir"
+             description="Change to this directory prior to invoking packer">
+        <f:textbox />
+    </f:entry>
 
     <f:entry title="${%File Entries}" field="fileEntries">
       <f:repeatableProperty field="fileEntries"  minimum="0" />

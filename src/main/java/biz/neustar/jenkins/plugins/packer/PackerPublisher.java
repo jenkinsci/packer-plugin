@@ -8,7 +8,6 @@
 
 package biz.neustar.jenkins.plugins.packer;
 
-import com.google.common.base.Strings;
 import hudson.AbortException;
 import hudson.CopyOnWrite;
 import hudson.EnvVars;
@@ -56,6 +55,7 @@ public class PackerPublisher extends Recorder {
     private String packerHome = "";
     private String params = "";
     private final boolean useDebug;
+    private final String changeDir;
     private String templateMode = TemplateMode.GLOBAL.toMode();
     private List<PackerFileEntry> fileEntries = Collections.emptyList();
 
@@ -66,7 +66,8 @@ public class PackerPublisher extends Recorder {
                            String packerHome,
                            String params,
                            List<PackerFileEntry> fileEntries,
-                           boolean useDebug) {
+                           boolean useDebug,
+                           String changeDir) {
 
         this.name = name;
         this.jsonTemplate = jsonTemplate;
@@ -75,6 +76,7 @@ public class PackerPublisher extends Recorder {
         this.params = params;
         this.fileEntries = fileEntries;
         this.useDebug = useDebug;
+        this.changeDir = changeDir;
     }
 
     public String getName() {
@@ -130,7 +132,7 @@ public class PackerPublisher extends Recorder {
     public static String createJsonTemplateTextTempFile(FilePath workspacePath, String contents) throws AbortException {
         try {
             LOGGER.info("jsonTemplateText: " + contents);
-            if (!Strings.isNullOrEmpty(contents)) {
+            if (Util.fixEmpty(contents) != null) {
                 FilePath jsonFile = workspacePath.createTextTempFile("packer", ".json", contents, false);
                 LOGGER.info("Using temp file: " + jsonFile.getRemote());
                 return jsonFile.getRemote();
@@ -152,6 +154,7 @@ public class PackerPublisher extends Recorder {
         return templateMode;
     }
 
+    // TODO: @DataBoundSetter
     public void setTemplateMode(String templateMode) {
         this.templateMode = templateMode;
     }
@@ -167,6 +170,11 @@ public class PackerPublisher extends Recorder {
     public boolean getUseDebug() {
         return useDebug;
     }
+
+    public String getChangeDir() {
+        return this.changeDir;
+    }
+
 
     public boolean isFileTemplate() {
         return TemplateMode.FILE.isMode(templateMode);
@@ -202,7 +210,7 @@ public class PackerPublisher extends Recorder {
 
         String home = getPackerHome();
         String remoteExec = null;
-        if (Strings.isNullOrEmpty(home)) {
+        if (Util.fixEmpty(home) == null) {
             PackerInstallation install = getInstallation();
             try {
                 install = install.forNode(build.getBuiltOn(), listener)
@@ -278,16 +286,15 @@ public class PackerPublisher extends Recorder {
     public boolean perform(AbstractBuild build, Launcher launcher,
                            BuildListener listener) {
         ArgumentListBuilder args = new ArgumentListBuilder();
-        EnvVars env = null;
         try {
             args.add(getRemotePackerExec(build, launcher, listener)).add("build");
 
-            env = build.getEnvironment(listener);
+            EnvVars env = build.getEnvironment(listener);
 
             PackerInstallation installation = getInstallation();
 
             // mask the global params.
-            for (String param : addParamsAsArgs(Strings.nullToEmpty(installation.getParams()))) {
+            for (String param : addParamsAsArgs(Util.fixNull(installation.getParams()))) {
                 String addParam = param.trim();
                 if (addParam.length() > 0) {
                     args.add(Util.replaceMacro(addParam, env), true);
@@ -330,7 +337,7 @@ public class PackerPublisher extends Recorder {
 
             try {
                 LOGGER.info("launch: " + args.toString());
-                if (launcher.launch().pwd(build.getWorkspace()).cmds(args).stdout(listener).join() == 0) {
+                if (launcher.launch().pwd(workingDir(build, env)).cmds(args).stdout(listener).join() == 0) {
                     listener.finished(Result.SUCCESS);
                     // parse the log to look for the image id
 
@@ -348,6 +355,13 @@ public class PackerPublisher extends Recorder {
         return false;
     }
 
+    protected FilePath workingDir(AbstractBuild build, EnvVars env) {
+        if (Util.fixEmpty(getChangeDir()) != null) {
+            return new FilePath(build.getWorkspace().getChannel(), Util.replaceMacro(getChangeDir(),env));
+        }
+        return build.getWorkspace();
+    }
+
     protected static String convertException(Exception ex) {
         StringWriter stringWriter = new StringWriter();
         ex.printStackTrace(new PrintWriter(stringWriter));
@@ -357,13 +371,15 @@ public class PackerPublisher extends Recorder {
 
     // Adapted from FilePath since this method is not public
     public static boolean isFilePathUnix(FilePath path) {
-        if(!path.isRemote())
+        if(!path.isRemote()) {
             return File.pathSeparatorChar != ';';
+        }
 
         String remote = path.getRemote();
         // Windows absolute path is 'X:\...', so this is usually a good indication of Windows path
-        if(remote.length() > 3 && remote.charAt(1) == ':' && remote.charAt(2) == '\\')
+        if(remote.length() > 3 && remote.charAt(1) == ':' && remote.charAt(2) == '\\') {
             return false;
+        }
         return remote.indexOf("\\") == -1;
     }
 
