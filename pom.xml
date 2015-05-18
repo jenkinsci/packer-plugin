@@ -8,7 +8,7 @@
 
   <groupId>biz.neustar.jenkins.plugins</groupId>
   <artifactId>packer</artifactId>
-  <version>1.2-SNAPSHOT</version>
+  <version>1.2</version>
   <packaging>hpi</packaging>
   <description>Integrates Packer as a publisher in Jenkins</description>
   <url>http://wiki.jenkins-ci.org/display/JENKINS/Packer+Plugin</url>
@@ -32,7 +32,8 @@
       <connection>scm:git:ssh://github.com/jenkinsci/packer-plugin.git</connection>
       <developerConnection>scm:git:ssh://git@github.com/jenkinsci/packer-plugin.git</developerConnection>
       <url>https://github.com/jenkinsci/packer-plugin</url>
-    </scm>
+      <tag>packer-1.2</tag>
+  </scm>
 
   <repositories>
     <repository>
