@@ -21,4 +21,4 @@ Jenkins generates the list of installers from the [Crawler Entry](https://github
 
 ---
 
-Thanks goes to [NeuStar](http://neustar.biz) for sponsoring this work.
+Thanks goes to [NeuStar](http://neustar.biz) for sponsoring the initial work.
