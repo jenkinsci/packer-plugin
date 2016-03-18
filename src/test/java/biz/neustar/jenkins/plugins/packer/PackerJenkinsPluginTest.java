@@ -22,9 +22,6 @@ import hudson.model.FreeStyleProject;
 import hudson.model.Node;
 import hudson.model.TaskListener;
 import hudson.remoting.LocalChannel;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import net.sf.json.JSONObject;
 import org.junit.Rule;
 import org.junit.Test;
@@ -33,6 +30,11 @@ import org.jvnet.hudson.test.WithoutJenkins;
 import org.kohsuke.stapler.StaplerRequest;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -519,6 +521,80 @@ public class PackerJenkinsPluginTest {
                 assertEquals("in build", Files.toString(new File(f), Charsets.UTF_8));
 
                 assertTrue(cmds.get(12).endsWith(".json"));
+
+                assertEquals(build.getWorkspace().getRemote() + "/blah/here", param.pwd().getRemote());
+
+                return procMock;
+            }
+        });
+
+        assertTrue(plugin.perform((AbstractBuild) build, launcherMock, buildListenerMock));
+    }
+
+    @Test
+    public void testPluginBuildChdirAndJobFile() throws Exception {
+        final String jsonText = "{ \"here\": \"i am\"}";
+
+        final String templateFile = "pckr.json";
+
+        PackerInstallation installation = new PackerInstallation(name, home,
+                "-var 'a=b'", createTemplateModeJson(TemplateMode.FILE, templateFile),
+                Collections.EMPTY_LIST, null);
+
+        final String pluginHome = "bin";
+
+        List<PackerFileEntry> wkspFileEntries = new ArrayList<>();
+        PackerPublisher placeHolder = new PackerPublisher(name,
+                null, null, pluginHome, "-var 'ami=123'", wkspFileEntries, false, "${WORKSPACE}/blah/here");
+
+        PackerInstallation[] installations = new PackerInstallation[1];
+        installations[0] = installation;
+
+        placeHolder.getDescriptor().setInstallations(installations);
+
+        StaplerRequest mockReq = mock(StaplerRequest.class);
+        when(mockReq.bindJSON(any(Class.class), any(JSONObject.class))).thenReturn(placeHolder);
+
+        JSONObject formJson = new JSONObject();
+        formJson.put("templateMode", createTemplateModeJson(TemplateMode.FILE, templateFile));
+        formJson.put("useDebug", true);
+        PackerPublisher plugin = placeHolder.getDescriptor().newInstance(mockReq, formJson);
+
+        FreeStyleProject project = jenkins.createFreeStyleProject();
+        final FreeStyleBuild build = project.scheduleBuild2(0).get();
+
+        Launcher launcherMock = mock(Launcher.class);
+        BuildListener buildListenerMock = mock(BuildListener.class);
+
+        final Proc procMock = mock(Proc.class);
+        when(procMock.join()).thenReturn(0);
+        when(launcherMock.launch(any(Launcher.ProcStarter.class))).then(new Answer<Proc>() {
+            public Proc answer(InvocationOnMock invocation) throws Throwable {
+                Launcher.ProcStarter param = (Launcher.ProcStarter) invocation.getArguments()[0];
+
+                List<String> cmds = param.cmds();
+
+                // Should be something like:
+                // cmds: [/var/folders/5b/fpx3w1510fg4lg7_gxrn_lpwndtvmg/T/hudson8360654264565261160test/workspace/test0/bin/packer,
+                //        build, -var, a=b, -var, ami=123,
+                //        /var/folders/5b/fpx3w1510fg4lg7_gxrn_lpwndtvmg/T/packer8212864036611789292.json]
+
+                for (int i = 0; i < cmds.size(); i++) {
+                    System.out.println("cmd(" + i + ") = " + cmds.get(i));
+                }
+
+
+                assertEquals(7, cmds.size());
+                assertEquals(build.getWorkspace().getRemote() + "/bin/packer", cmds.get(0));
+                assertEquals("build", cmds.get(1));
+                assertEquals("-var", cmds.get(2));
+                assertEquals("a=b", cmds.get(3));
+                assertEquals("-var", cmds.get(4));
+                assertEquals("ami=123", cmds.get(5));
+
+                // /var/folders/rb/5j8w_qtn3_j5335pvy5ttg7n1cp53j/T/hudson8047293651954072708test/workspace/test0/blah/here/pckr.json
+                assertTrue(cmds.get(6).endsWith("test/workspace/test0/blah/here/pckr.json"));
+
 
                 assertEquals(build.getWorkspace().getRemote() + "/blah/here", param.pwd().getRemote());
 

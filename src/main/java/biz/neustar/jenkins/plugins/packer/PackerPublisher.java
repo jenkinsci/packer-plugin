@@ -25,6 +25,10 @@ import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
 import hudson.util.ArgumentListBuilder;
+import net.sf.json.JSONObject;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.StaplerRequest;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -34,9 +38,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Logger;
-import net.sf.json.JSONObject;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.StaplerRequest;
 
 
 /**
@@ -234,16 +235,24 @@ public class PackerPublisher extends Recorder {
         return remoteExec;
     }
 
-    public String getRemoteTemplate(AbstractBuild build, String remotePath) {
-        FilePath templatePath = getRemotePath(build, remotePath);
+    public String getRemoteTemplate(AbstractBuild build, String... remotePaths) {
+        FilePath templatePath = getRemotePath(build, remotePaths);
         LOGGER.info("Using templatePath: " + templatePath);
         return templatePath.getRemote();
     }
 
     // either absolute or relative to project workspace
-    public FilePath getRemotePath(AbstractBuild build, String remotePath) {
-        return new FilePath(build.getWorkspace(), remotePath);
+    public FilePath getRemotePath(AbstractBuild build, String... remotePaths) {
+        FilePath result = build.getWorkspace();
+        for (String remotePath : remotePaths) {
+            String path = remotePath.trim();
+            if (!path.isEmpty()) {
+                result = new FilePath(result, path);
+            }
+        }
+        return result;
     }
+
 
     /**
      * Create the temporary files from the configured entries.
@@ -316,20 +325,24 @@ public class PackerPublisher extends Recorder {
                 args.add("-debug");
             }
 
+            FilePath workingDir = workingDir(build, env);
+            LOGGER.info("using working dir: " + workingDir);
+
             if (isGlobalTemplate()) {
                 LOGGER.info("Using GlobalTemplate");
                 if (installation.isFileTemplate()) {
-                    args.add(getRemoteTemplate(build, Util.replaceMacro(installation.getJsonTemplate(), env)));
+                    args.add(getRemoteTemplate(build, Util.replaceMacro(getChangeDir(), env),
+                                Util.replaceMacro(installation.getJsonTemplate(), env)));
                 } else {
-                    args.add(createJsonTemplateTextTempFile(build.getWorkspace(),
-                            installation.getJsonTemplateText()));
+                    args.add(createJsonTemplateTextTempFile(workingDir, installation.getJsonTemplateText()));
                 }
             } else if (isTextTemplate()) {
                 LOGGER.info("Using TextTemplate");
-                args.add(createJsonTemplateTextTempFile(build.getWorkspace()));
+                args.add(createJsonTemplateTextTempFile(workingDir));
             } else if (isFileTemplate()) {
                 LOGGER.info("Using FileTemplate");
-                args.add(getRemoteTemplate(build, Util.replaceMacro(getJsonTemplate(), env)));
+                args.add(getRemoteTemplate(build, Util.replaceMacro(getChangeDir(), env),
+                            Util.replaceMacro(getJsonTemplate(), env)));
             } else { // throw
                 LOGGER.warning("Unknown Template");
                 throw new AbortException("Unknown Template / Loading Failed");
@@ -337,7 +350,7 @@ public class PackerPublisher extends Recorder {
 
             try {
                 LOGGER.info("launch: " + args.toString());
-                if (launcher.launch().pwd(workingDir(build, env)).cmds(args).stdout(listener).join() == 0) {
+                if (launcher.launch().pwd(workingDir).cmds(args).stdout(listener).join() == 0) {
                     listener.finished(Result.SUCCESS);
                     // parse the log to look for the image id
 
@@ -354,6 +367,7 @@ public class PackerPublisher extends Recorder {
         listener.finished(Result.FAILURE);
         return false;
     }
+
 
     protected FilePath workingDir(AbstractBuild build, EnvVars env) {
         if (Util.fixEmpty(getChangeDir()) != null) {
@@ -384,7 +398,7 @@ public class PackerPublisher extends Recorder {
     }
 
     public static List<String> addParamsAsArgs(String params) {
-        List<String> args = new ArrayList<String>();
+        List<String> args = new ArrayList<>();
         if (params == null || params.isEmpty()) {
             return args;
         }
