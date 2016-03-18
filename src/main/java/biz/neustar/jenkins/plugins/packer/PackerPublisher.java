@@ -274,7 +274,9 @@ public class PackerPublisher extends Recorder {
             }
 
             for (PackerFileEntry entry : fileEntries.values()) {
-                FilePath entryFile = workspacePath.createTextTempFile(entry.getVarFileName(), ".tmp",
+                // should be at least 1 character otherwise that shouldnt be allowed.
+                String prefix = "pp" + entry.getVarFileName();
+                FilePath entryFile = workspacePath.createTextTempFile(prefix, ".tmp",
                             entry.getContents(), false);
                 variables.append(String.format("-var \"%s=%s\" ", entry.getVarFileName(), entryFile.getRemote()));
             }

@@ -86,6 +86,23 @@ public class PackerJenkinsPluginTest {
     }
 
     @Test
+    public void testFileVariables() throws Exception {
+        // make sure we can handle short file names
+        FilePath path = new FilePath(new LocalChannel(MoreExecutors.sameThreadExecutor()),
+                "/Users/nothing");
+
+        List<PackerFileEntry> fileEntries = new ArrayList<>();
+        fileEntries.add(new PackerFileEntry("a", "oqiwueroqiweur"));
+        PackerPublisher placeHolder = new PackerPublisher(name,
+                jsonProjectTemplate, "", PLUGIN_HOME,
+                localParams, fileEntries, false, null);
+
+
+        String result = placeHolder.createTempFileEntries(path);
+        System.out.println("testFileVariables result: " + result);
+    }
+
+    @Test
     public void testPackerInstaller() throws Exception {
         final String jsonText = "{ \"here\": \"i am\"}";
 
