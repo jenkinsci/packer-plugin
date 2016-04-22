@@ -352,10 +352,9 @@ public class PackerPublisher extends Recorder {
 
             try {
                 LOGGER.info("launch: " + args.toString());
-                if (launcher.launch().pwd(workingDir).cmds(args).stdout(listener).join() == 0) {
+                if (launcher.launch().pwd(workingDir).cmds(args).envs(env).stdout(listener).join() == 0) {
                     listener.finished(Result.SUCCESS);
                     // parse the log to look for the image id
-
                     return true;
                 }
             } catch (Exception ex) {
