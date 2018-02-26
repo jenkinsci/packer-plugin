@@ -46,11 +46,10 @@ public class PackerInstallation extends ToolInstallation implements
     public static final String WINDOWS_PACKER_COMMAND = "packer.exe";
 
     private final String packerHome;
-    private String params = "";
-    private String jsonTemplate = "";
-    private String jsonTemplateText = "";
-    private final JSONObject templateModeJsonObj;
-    private String templateMode = TemplateMode.TEXT.toMode();
+    private final String params;
+    private final String jsonTemplate;
+    private final String jsonTemplateText;
+    private final String templateMode;
     private List<PackerFileEntry> fileEntries = Collections.emptyList();
 
     @DataBoundConstructor
@@ -58,17 +57,24 @@ public class PackerInstallation extends ToolInstallation implements
                               JSONObject templateMode,
                               List<PackerFileEntry> fileEntries,
                               List<? extends ToolProperty<?>> properties) {
-        super(name, launderHome(home), properties);
+        this(name, launderHome(home), params,
+             templateMode.optString("jsonTemplate", null),
+             templateMode.optString("jsonTemplateText", null),
+             Strings.isNullOrEmpty(templateMode.optString("value", null)) ? TemplateMode.TEXT.toMode() : templateMode.getString("value"),
+             fileEntries, properties);
+    }
+
+    private PackerInstallation(String name, String home, String params,
+                               String jsonTemplate, String jsonTemplateText, String templateMode,
+                               List<PackerFileEntry> fileEntries,
+                              List<? extends ToolProperty<?>> properties) {
+        super(name, home, properties);
         this.packerHome = super.getHome();
         this.params = params;
         this.fileEntries = fileEntries;
-        this.templateModeJsonObj = templateMode;
-        this.jsonTemplate = templateModeJsonObj.optString("jsonTemplate", null);
-        this.jsonTemplateText = templateModeJsonObj.optString("jsonTemplateText", null);
-
-        if (!Strings.isNullOrEmpty(templateModeJsonObj.optString("value", null))) {
-            this.templateMode = templateModeJsonObj.getString("value");
-        }
+        this.jsonTemplate = jsonTemplate;
+        this.jsonTemplateText = jsonTemplateText;
+        this.templateMode = templateMode;
     }
 
     private static String launderHome(String home) {
@@ -120,10 +126,9 @@ public class PackerInstallation extends ToolInstallation implements
         return TemplateMode.TEXT.isMode(templateMode);
     }
 
-
     public PackerInstallation forEnvironment(EnvVars environment) {
         return new PackerInstallation(getName(),
-                environment.expand(packerHome), params, templateModeJsonObj,
+                environment.expand(packerHome), params, jsonTemplate, jsonTemplateText, templateMode,
                 fileEntries,
                 getProperties().toList());
     }
@@ -131,7 +136,7 @@ public class PackerInstallation extends ToolInstallation implements
     public PackerInstallation forNode(Node node, TaskListener log)
             throws IOException, InterruptedException {
         return new PackerInstallation(getName(), translateFor(node, log),
-                params, templateModeJsonObj, fileEntries, getProperties().toList());
+                params, jsonTemplate, jsonTemplateText, templateMode, fileEntries, getProperties().toList());
     }
 
     public String getExecutable(Launcher launcher) throws InterruptedException, IOException {
