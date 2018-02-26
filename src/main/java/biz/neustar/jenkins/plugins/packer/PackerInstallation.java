@@ -135,23 +135,33 @@ public class PackerInstallation extends ToolInstallation implements
     }
 
     public String getExecutable(Launcher launcher) throws InterruptedException, IOException {
-        return launcher.getChannel().call(new MasterToSlaveCallable<String, IOException>() {
-            public String call() throws IOException {
-                File exe = getExeFile();
-                if (exe.exists()) {
-                    return exe.getPath();
-                }
-                return null;
-            }
-        });
+        return launcher.getChannel().call(new GetExecutable((packerHome)));
     }
 
-    protected File getExeFile() {
+    private static class GetExecutable extends MasterToSlaveCallable<String, IOException> {
+        private final String packerHome;
+        GetExecutable(String packerHome) {
+            this.packerHome = packerHome;
+        }
+        @Override
+        public String call() throws IOException {
+            File exe = getExeFile(packerHome);
+            if (exe.exists()) {
+                return exe.getPath();
+            }
+            return null;
+        }
+    }
+
+    private static File getExeFile(String packerHome) {
         String execName = (Functions.isWindows()) ? WINDOWS_PACKER_COMMAND : UNIX_PACKER_COMMAND;
-        String home = Util.replaceMacro(this.packerHome, EnvVars.masterEnvVars);
+        String home = Util.replaceMacro(packerHome, EnvVars.masterEnvVars);
         return new File(home, execName);
     }
 
+    protected File getExeFile() {
+        return getExeFile(packerHome);
+    }
 
     @Extension
     public static class DescriptorImpl extends
