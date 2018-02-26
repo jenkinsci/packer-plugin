@@ -17,7 +17,6 @@ import hudson.Util;
 import hudson.model.EnvironmentSpecific;
 import hudson.model.Node;
 import hudson.model.TaskListener;
-import hudson.remoting.Callable;
 import hudson.slaves.NodeSpecific;
 import hudson.tools.ToolDescriptor;
 import hudson.tools.ToolInstallation;
@@ -30,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
+import jenkins.security.MasterToSlaveCallable;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
 
@@ -135,7 +135,7 @@ public class PackerInstallation extends ToolInstallation implements
     }
 
     public String getExecutable(Launcher launcher) throws InterruptedException, IOException {
-        return launcher.getChannel().call(new Callable<String, IOException>() {
+        return launcher.getChannel().call(new MasterToSlaveCallable<String, IOException>() {
             public String call() throws IOException {
                 File exe = getExeFile();
                 if (exe.exists()) {
