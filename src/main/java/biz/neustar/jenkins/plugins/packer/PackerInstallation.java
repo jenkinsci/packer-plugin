@@ -17,7 +17,6 @@ import hudson.Util;
 import hudson.model.EnvironmentSpecific;
 import hudson.model.Node;
 import hudson.model.TaskListener;
-import hudson.remoting.Callable;
 import hudson.slaves.NodeSpecific;
 import hudson.tools.ToolDescriptor;
 import hudson.tools.ToolInstallation;
@@ -30,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
+import jenkins.security.MasterToSlaveCallable;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
 
@@ -46,11 +46,10 @@ public class PackerInstallation extends ToolInstallation implements
     public static final String WINDOWS_PACKER_COMMAND = "packer.exe";
 
     private final String packerHome;
-    private String params = "";
-    private String jsonTemplate = "";
-    private String jsonTemplateText = "";
-    private final JSONObject templateModeJsonObj;
-    private String templateMode = TemplateMode.TEXT.toMode();
+    private final String params;
+    private final String jsonTemplate;
+    private final String jsonTemplateText;
+    private final String templateMode;
     private List<PackerFileEntry> fileEntries = Collections.emptyList();
 
     @DataBoundConstructor
@@ -58,17 +57,24 @@ public class PackerInstallation extends ToolInstallation implements
                               JSONObject templateMode,
                               List<PackerFileEntry> fileEntries,
                               List<? extends ToolProperty<?>> properties) {
-        super(name, launderHome(home), properties);
+        this(name, launderHome(home), params,
+             templateMode.optString("jsonTemplate", null),
+             templateMode.optString("jsonTemplateText", null),
+             Strings.isNullOrEmpty(templateMode.optString("value", null)) ? TemplateMode.TEXT.toMode() : templateMode.getString("value"),
+             fileEntries, properties);
+    }
+
+    private PackerInstallation(String name, String home, String params,
+                               String jsonTemplate, String jsonTemplateText, String templateMode,
+                               List<PackerFileEntry> fileEntries,
+                              List<? extends ToolProperty<?>> properties) {
+        super(name, home, properties);
         this.packerHome = super.getHome();
         this.params = params;
         this.fileEntries = fileEntries;
-        this.templateModeJsonObj = templateMode;
-        this.jsonTemplate = templateModeJsonObj.optString("jsonTemplate", null);
-        this.jsonTemplateText = templateModeJsonObj.optString("jsonTemplateText", null);
-
-        if (!Strings.isNullOrEmpty(templateModeJsonObj.optString("value", null))) {
-            this.templateMode = templateModeJsonObj.getString("value");
-        }
+        this.jsonTemplate = jsonTemplate;
+        this.jsonTemplateText = jsonTemplateText;
+        this.templateMode = templateMode;
     }
 
     private static String launderHome(String home) {
@@ -120,10 +126,9 @@ public class PackerInstallation extends ToolInstallation implements
         return TemplateMode.TEXT.isMode(templateMode);
     }
 
-
     public PackerInstallation forEnvironment(EnvVars environment) {
         return new PackerInstallation(getName(),
-                environment.expand(packerHome), params, templateModeJsonObj,
+                environment.expand(packerHome), params, jsonTemplate, jsonTemplateText, templateMode,
                 fileEntries,
                 getProperties().toList());
     }
@@ -131,27 +136,37 @@ public class PackerInstallation extends ToolInstallation implements
     public PackerInstallation forNode(Node node, TaskListener log)
             throws IOException, InterruptedException {
         return new PackerInstallation(getName(), translateFor(node, log),
-                params, templateModeJsonObj, fileEntries, getProperties().toList());
+                params, jsonTemplate, jsonTemplateText, templateMode, fileEntries, getProperties().toList());
     }
 
     public String getExecutable(Launcher launcher) throws InterruptedException, IOException {
-        return launcher.getChannel().call(new Callable<String, IOException>() {
-            public String call() throws IOException {
-                File exe = getExeFile();
-                if (exe.exists()) {
-                    return exe.getPath();
-                }
-                return null;
-            }
-        });
+        return launcher.getChannel().call(new GetExecutable((packerHome)));
     }
 
-    protected File getExeFile() {
+    private static class GetExecutable extends MasterToSlaveCallable<String, IOException> {
+        private final String packerHome;
+        GetExecutable(String packerHome) {
+            this.packerHome = packerHome;
+        }
+        @Override
+        public String call() throws IOException {
+            File exe = getExeFile(packerHome);
+            if (exe.exists()) {
+                return exe.getPath();
+            }
+            return null;
+        }
+    }
+
+    private static File getExeFile(String packerHome) {
         String execName = (Functions.isWindows()) ? WINDOWS_PACKER_COMMAND : UNIX_PACKER_COMMAND;
-        String home = Util.replaceMacro(this.packerHome, EnvVars.masterEnvVars);
+        String home = Util.replaceMacro(packerHome, EnvVars.masterEnvVars);
         return new File(home, execName);
     }
 
+    protected File getExeFile() {
+        return getExeFile(packerHome);
+    }
 
     @Extension
     public static class DescriptorImpl extends
